@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maaş Günü Pro | Finansal Analiz Sistemi</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; color: #1e293b; font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; }
+        .glass-card { background: white; border-radius: 24px; box-shadow: 0 4px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.05); }
+        .step-btn {
+            padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 13px;
+            background: #f1f5f9; color: #64748b; transition: all 0.3s;
+        }
+        .step-btn.active { background: #3b82f6; color: white; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); }
+        .step-btn.completed { background: #dcfce7; color: #15803d; }
+        .input-style {
+            background: #f8fafc; border: 2px solid #f1f5f9; padding: 14px;
+            border-radius: 16px; width: 100%; outline: none; transition: 0.2s;
+        }
+        .input-style:focus { border-color: #3b82f6; background: white; }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <div id="app" v-cloak class="max-w-6xl mx-auto">
+        
+        <header class="flex flex-wrap justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-800 tracking-tight text-slate-900">Maaş Günü <span class="text-blue-600">Pro</span></h1>
+                <p class="text-slate-500 font-semibold text-sm">2026-2050 Finansal Yol Haritası</p>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                <select v-model="selMonth" @change="loadData" class="bg-transparent font-bold outline-none px-2 cursor-pointer">
+                    <option v-for="m in months" :value="m">{{m}}</option>
+                </select>
+                <select v-model="selYear" @change="loadData" class="bg-transparent font-bold outline-none px-2 border-l border-slate-100 cursor-pointer">
+                    <option v-for="y in years" :value="y">{{y}}</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="flex justify-center mb-8">
+            <button @click="toggleAnalysis" class="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-full font-bold shadow-lg hover:bg-black transition-all">
+                📊 Grafik Analizi (Yıllık)
+            </button>
+        </div>
+
+        <div v-if="showAnalysis" class="glass-card p-8 mb-10 animate-in zoom-in duration-300">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-800 text-slate-800">{{ selYear }} Yılı Gelir/Gider Dengesi</h3>
+                <button @click="showAnalysis = false" class="text-slate-400 text-2xl">×</button>
+            </div>
+            <div id="yearlyBarChart"></div>
+        </div>
+
+        <nav class="flex flex-wrap gap-2 mb-10 justify-center">
+            <button v-for="n in 7" @click="step = n" class="step-btn" :class="{ 'active': step === n, 'completed': step > n }">
+                Adım {{n}}
+            </button>
+        </nav>
+
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <div class="lg:col-span-7">
+                <div class="glass-card p-8 min-h-[550px]">
+                    
+                    <div v-if="step === 1" class="space-y-6">
+                        <h2 class="text-2xl font-800 text-slate-800">1. Finansal Zemin</h2>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase mb-2 block">Aylık Net Gelir</label>
+                            <input type="number" v-model.number="form.income" class="input-style text-2xl font-bold text-blue-600">
+                        </div>
+                        <div class="space-y-3">
+                            <div v-for="(exp, i) in form.expenses" :key="i" class="flex gap-2">
+                                <input v-model="exp.name" class="input-style" placeholder="Gider Kalemi">
+                                <input type="number" v-model.number="exp.val" class="input-style w-32 text-right font-bold">
+                                <button @click="removeExpense(i)" class="text-red-300 hover:text-red-500 px-2">×</button>
+                            </div>
+                            <button @click="addExpense" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:bg-slate-50">+ Yeni Gider Ekle</button>
+                        </div>
+                    </div>
+
+                    <div v-if="step === 2">
+                        <h2 class="text-2xl font-800 mb-6 text-slate-800">2. Acil Durum Fonu</h2>
+                        <div class="bg-blue-50 p-8 rounded-3xl mb-8 text-center border border-blue-100">
+                            <p class="text-xs font-bold text-blue-400 uppercase mb-2">Güvence Hedefiniz</p>
+                            <p class="text-5xl font-800 text-blue-700">₺{{ (livingCost * form.eMonths).toLocaleString() }}</p>
+                        </div>
+                        <div class="flex gap-4 mb-8">
+                            <button v-for="m in [3, 6]" @click="form.eMonths = m" :class="form.eMonths === m ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-slate-200'" class="flex-1 py-4 rounded-2xl font-bold transition-all">{{m}} Aylık Koruma</button>
+                        </div>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-2 block">Şu Anki Hazır Birikiminiz</label>
+                        <input type="number" v-model.number="form.eSaved" class="input-style text-xl font-bold">
+                    </div>
+
+                    <div v-if="step === 3">
+                        <h2 class="text-2xl font-800 mb-6 text-slate-800">3. Borç Kartopu</h2>
+                        <div class="space-y-3">
+                            <div v-for="(debt, i) in form.debts" :key="i" class="flex gap-2">
+                                <input v-model="debt.name" class="input-style" placeholder="Borç Adı">
+                                <input type="number" v-model.number="debt.val" class="input-style w-32 text-right font-bold text-red-500">
+                                <button @click="form.debts.splice(i,1)" class="text-red-300">×</button>
+                            </div>
+                            <button @click="form.debts.push({name:'', val:0})" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold">+ Borç Kalemi Ekle</button>
+                        </div>
+                    </div>
+
+                    <div v-if="step === 4">
+                        <h2 class="text-2xl font-800 mb-6 text-slate-800">4. Gelecek (BES)</h2>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-2 block">Aylık BES Ödemesi</label>
+                        <input type="number" v-model.number="form.bes" class="input-style text-2xl font-bold text-orange-600">
+                        <div class="mt-6 p-6 bg-orange-50 rounded-2xl border border-orange-100 text-orange-800 text-sm">
+                            Emeklilik döneminiz için bu tutarı her ay disiplinle ödemeye devam edin.
+                        </div>
+                    </div>
+
+                    <div v-if="step === 5">
+                        <h2 class="text-2xl font-800 mb-6 text-slate-800">5. Varlık Büyütme</h2>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-2 block">Hisse Senedi / Fon / Altın Alımı</label>
+                        <input type="number" v-model.number="form.stocks" class="input-style text-2xl font-bold text-indigo-600">
+                        <p class="mt-4 text-slate-500 text-sm italic">Paranızın sizin için çalışmasını sağlayın.</p>
+                    </div>
+
+                    <div v-if="step === 6">
+                        <h2 class="text-2xl font-800 mb-6 text-slate-800">6. Finansal Otomasyon</h2>
+                        <div class="space-y-4">
+                            <div v-for="check in ['Kredi kartları otomatik ödemede mi?','Maaş günü yatırım hesabına para geçiyor mu?']" class="p-5 bg-slate-50 rounded-2xl flex items-center justify-between">
+                                <span class="font-bold text-slate-700">{{check}}</span>
+                                <input type="checkbox" class="w-6 h-6 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="step === 7" class="text-center py-10">
+                        <div class="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 text-4xl">✓</div>
+                        <h2 class="text-3xl font-800 mb-4">Ay Sonu Kontrolü</h2>
+                        <p class="text-slate-500 mb-10">{{ selMonth }} {{ selYear }} verileri kaydedilmeye hazır.</p>
+                        <button @click="saveData" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-blue-700 transition-all">SİSTEME KAYDET</button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 space-y-6">
+                <div class="glass-card p-6 sticky top-8">
+                    <h3 class="text-center font-bold text-slate-400 text-[10px] uppercase tracking-widest mb-6">Mevcut Dağılım</h3>
+                    <div id="mainDonutChart"></div>
+                    <div class="space-y-3 mt-8">
+                        <div class="flex justify-between p-4 bg-red-50 rounded-2xl">
+                            <span class="text-red-400 font-bold">Giderler</span>
+                            <span class="font-800">₺{{ livingCost.toLocaleString() }}</span>
+                        </div>
+                        <div class="flex justify-between p-4 bg-blue-50 rounded-2xl">
+                            <span class="text-blue-400 font-bold">Yatırımlar</span>
+                            <span class="font-800">₺{{ (form.bes + form.stocks).toLocaleString() }}</span>
+                        </div>
+                        <div class="flex justify-between p-4 border-2 border-emerald-100 rounded-2xl">
+                            <span class="text-emerald-500 font-bold">Serbest Kalan</span>
+                            <span class="font-800 text-emerald-600">₺{{ (form.income - livingCost - form.bes - form.stocks).toLocaleString() }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-12 flex justify-between">
+            <button @click="step--" v-if="step > 1" class="px-8 py-3 text-slate-400 font-bold">← Geri</button>
+            <div v-else></div>
+            <button @click="step++" v-if="step < 7" class="px-10 py-4 bg-white border border-slate-200 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all">İleri →</button>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const step = ref(1);
+                const showAnalysis = ref(false);
+                const selMonth = ref("Nisan");
+                const selYear = ref(2026);
+                const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+                const years = Array.from({length:25}, (_,i) => 2026+i);
+
+                const form = ref({
+                    income: 70000, expenses: [{name:'Kira', val:20000}],
+                    eMonths: 3, eSaved: 0, debts: [], bes: 0, stocks: 0
+                });
+
+                const livingCost = computed(() => form.value.expenses.reduce((t, x) => t + (Number(x.val) || 0), 0));
+                
+                // --- GRAFİKLER ---
+                let mainChart = null;
+                let yearlyChart = null;
+
+                const updateMainChart = () => {
+                    const series = [livingCost.value, (form.value.bes + form.value.stocks), Math.max(0, form.value.income - livingCost.value - form.value.bes - form.value.stocks)];
+                    if(!mainChart) {
+                        const opts = {
+                            chart: { type: 'donut', height: 280 },
+                            series: series,
+                            labels: ['Gider', 'Yatırım', 'Kalan'],
+                            colors: ['#ef4444', '#3b82f6', '#10b981'],
+                            stroke: { show: false },
+                            legend: { position: 'bottom' },
+                            plotOptions: { pie: { donut: { size: '78%' } } }
+                        };
+                        mainChart = new ApexCharts(document.querySelector("#mainDonutChart"), opts);
+                        mainChart.render();
+                    } else { mainChart.updateSeries(series); }
+                };
+
+                const toggleAnalysis = () => {
+                    showAnalysis.value = !showAnalysis.value;
+                    if(showAnalysis.value) fetchYearlyData();
+                };
+
+                const fetchYearlyData = async () => {
+                    const res = await fetch(`http://localhost:3000/api/analiz/${selYear.value}`);
+                    const rows = await res.json();
+                    
+                    const data = months.map(m => {
+                        const found = rows.find(r => r.donem.startsWith(m));
+                        if(found) {
+                            const ver = JSON.parse(found.veriler);
+                            const gid = ver.expenses.reduce((t, x) => t + (Number(x.val) || 0), 0);
+                            return { ay: m, gelir: found.gelir, gider: gid };
+                        }
+                        return { ay: m, gelir: 0, gider: 0 };
+                    });
+
+                    nextTick(() => {
+                        const opts = {
+                            chart: { type: 'bar', height: 350, toolbar: { show: false } },
+                            series: [
+                                { name: 'Gelir', data: data.map(d => d.gelir) },
+                                { name: 'Gider', data: data.map(d => d.gider) }
+                            ],
+                            xaxis: { categories: months },
+                            colors: ['#10b981', '#ef4444'],
+                            plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } }
+                        };
+                        if(yearlyChart) yearlyChart.destroy();
+                        yearlyChart = new ApexCharts(document.querySelector("#yearlyBarChart"), opts);
+                        yearlyChart.render();
+                    });
+                };
+
+                // --- VERİ İŞLEMLERİ ---
+                const loadData = async () => {
+                    const res = await fetch(`http://localhost:3000/api/kayit/${selMonth.value} ${selYear.value}`);
+                    const data = await res.json();
+                    if(data) form.value = JSON.parse(data.veriler);
+                    else form.value = { income: 70000, expenses: [{name:'Kira', val:20000}], eMonths: 3, eSaved: 0, debts: [], bes: 0, stocks: 0 };
+                    updateMainChart();
+                    if(showAnalysis.value) fetchYearlyData();
+                };
+
+                const saveData = async () => {
+                    await fetch('http://localhost:3000/api/kaydet', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ donem: `${selMonth.value} ${selYear.value}`, gelir: form.value.income, veriler: form.value })
+                    });
+                    alert("Başarıyla Kaydedildi!");
+                };
+
+                const addExpense = () => form.value.expenses.push({ name: '', val: 0 });
+                const removeExpense = (i) => form.value.expenses.splice(i, 1);
+
+                watch(form, () => updateMainChart(), { deep: true });
+
+                onMounted(() => { loadData(); });
+
+                return { step, showAnalysis, selMonth, selYear, months, years, form, livingCost, addExpense, removeExpense, saveData, loadData, toggleAnalysis };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
