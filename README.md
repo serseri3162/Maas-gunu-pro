@@ -37,18 +37,3 @@ Bash
 node server.js
 Erişim:
 Tarayıcınızda http://localhost:3000 adresine gidin.
-
-🚀 Salary Day Pro (English)
-Salary Day Pro is a modern and sleek personal finance management platform built on a 7-step methodology designed to automate your journey to financial freedom.
-
-✨ Key Features
-7-Step Strategy: A specialized flow from building a financial foundation to emergency funds and investment management.
-
-Dynamic Analytics: Interactive bar and donut charts that compare monthly and yearly financial data.
-
-Data Persistence: Your data is securely stored in a local SQLite database for future reference.
-
-Professional UI: A clean, "Apple-style" light-mode interface focused on user experience.
-
-🛠️ Tech Stack
-Vue.js 3, Tailwind CSS, ApexCharts, Node.js, Express, SQLite3
