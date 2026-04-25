@@ -53,8 +53,4 @@ app.get('/api/analiz/:yil', (req, res) => {
         res.json(rows);
     });
 });
-// Eğer birisi siteadi.com/mobile adresine girerse mobile.html'i gönder
-app.get('/mobile', (req, res) => {
-    res.sendFile(path.join(__dirname, 'www', 'mobile.html'));
-});
 app.listen(3000, () => console.log('Sistem 3000 portunda aktif!'));
