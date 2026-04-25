@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MGP Mobile</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+            --ios-blue: #007aff;
+        }
+        body {
+            background-color: #f2f2f7; /* iOS System Gray 6 */
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            padding-top: var(--safe-top);
+            padding-bottom: calc(80px + var(--safe-bottom));
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-card {
+            background: white;
+            border-radius: 22px;
+            margin: 16px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(65px + var(--safe-bottom));
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-top: 0.5px solid rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-around;
+            padding-bottom: var(--safe-bottom);
+            z-index: 9999;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: #8e8e93;
+        }
+        .nav-item.active { color: var(--ios-blue); }
+        
+        .input-ios {
+            background: #f2f2f7;
+            border-radius: 12px;
+            padding: 14px;
+            width: 100%;
+            font-size: 17px !important;
+            border: none;
+            outline: none;
+        }
+        /* Gizli Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        
+        <div class="px-6 pt-4 pb-2">
+            <h1 class="text-3xl font-800 tracking-tighter">Özet</h1>
+            <p class="text-slate-400 font-bold text-sm uppercase tracking-wide">{{ selMonth }} {{ selYear }}</p>
+        </div>
+
+        <div class="ios-card">
+            <div id="mainDonutChart"></div>
+            <div class="flex justify-between mt-4 px-2">
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-slate-400 mb-1">GELİR</p>
+                    <p class="text-lg font-800 text-emerald-500">₺{{ form.income.toLocaleString() }}</p>
+                </div>
+                <div class="text-center border-x border-slate-100 px-6">
+                    <p class="text-[10px] font-bold text-slate-400 mb-1">GİDER</p>
+                    <p class="text-lg font-800 text-red-500">₺{{ livingCost.toLocaleString() }}</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-[10px] font-bold text-slate-400 mb-1">KALAN</p>
+                    <p class="text-lg font-800 text-blue-500">₺{{ (form.income - livingCost).toLocaleString() }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="activeTab === 'home'" class="animate-in fade-in duration-500">
+            <div class="ios-card">
+                <h3 class="font-800 text-lg mb-4 text-slate-800">Aylık Gelir</h3>
+                <input type="number" v-model.number="form.income" class="input-ios font-bold text-blue-600 text-2xl">
+            </div>
+
+            <div class="ios-card">
+                <h3 class="font-800 text-lg mb-4 text-slate-800">Gider Kalemleri</h3>
+                <div v-for="(exp, i) in form.expenses" :key="i" class="flex items-center gap-3 mb-3 pb-3 border-b border-slate-50">
+                    <input v-model="exp.name" class="bg-transparent font-semibold flex-1 outline-none text-slate-600" placeholder="Gider Adı">
+                    <input type="number" v-model.number="exp.val" class="bg-slate-100 px-3 py-2 rounded-lg font-bold w-24 text-right outline-none">
+                </div>
+                <button @click="addExpense" class="w-full py-3 text-blue-600 font-bold text-sm">+ Yeni Ekle</button>
+            </div>
+        </div>
+
+        <div v-if="activeTab === 'sync'" class="animate-in slide-in-from-bottom duration-300">
+            <div class="ios-card text-center py-10">
+                <div class="text-5xl mb-4 text-blue-500">☁️</div>
+                <h2 class="text-2xl font-800 mb-2">Bulut Senkronizasyonu</h2>
+                <p class="text-slate-500 text-sm mb-8">Verilerini internetteki güvenli veritabanına aktar.</p>
+                <button @click="saveData" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-transform">ŞİMDİ KAYDET</button>
+            </div>
+        </div>
+
+        <nav class="tab-bar">
+            <button @click="activeTab = 'home'" class="nav-item" :class="{active: activeTab === 'home'}">
+                <span class="text-2xl">🏠</span>
+                <span class="text-[10px] font-bold mt-1">Ana Sayfa</span>
+            </button>
+            <button @click="activeTab = 'sync'" class="nav-item" :class="{active: activeTab === 'sync'}">
+                <span class="text-2xl">🔄</span>
+                <span class="text-[10px] font-bold mt-1">Eşitle</span>
+            </button>
+            <button class="nav-item">
+                <span class="text-2xl">⚙️</span>
+                <span class="text-[10px] font-bold mt-1">Ayarlar</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+        const API_URL = "https://senin-projen.up.railway.app"; // BURAYI GÜNCELLE
+
+        createApp({
+            setup() {
+                const activeTab = ref('home');
+                const selMonth = ref("Nisan");
+                const selYear = ref(2026);
+                const form = ref({ income: 75000, expenses: [{name:'Kira', val:25000}], eMonths: 3, eSaved: 0, debts: [], bes: 0, stocks: 0 });
+
+                const livingCost = computed(() => form.value.expenses.reduce((t, x) => t + (Number(x.val) || 0), 0));
+
+                let mainChart = null;
+                const updateChart = () => {
+                    const series = [livingCost.value, Math.max(0, form.value.income - livingCost.value)];
+                    if(!mainChart) {
+                        mainChart = new ApexCharts(document.querySelector("#mainDonutChart"), {
+                            chart: { type: 'donut', height: 220 },
+                            series: series,
+                            labels: ['Gider', 'Kalan'],
+                            colors: ['#ef4444', '#3b82f6'],
+                            legend: { show: false },
+                            stroke: { show: false },
+                            plotOptions: { pie: { donut: { size: '80%' } } }
+                        });
+                        mainChart.render();
+                    } else { mainChart.updateSeries(series); }
+                };
+
+                const saveData = async () => {
+                    try {
+                        await fetch(`${API_URL}/api/kaydet`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ donem: `${selMonth.value} ${selYear.value}`, gelir: form.value.income, veriler: form.value })
+                        });
+                        alert("Başarıyla Eşitlendi! ✅");
+                    } catch (e) { alert("Hata: " + e.message); }
+                };
+
+                const addExpense = () => form.value.expenses.push({ name: '', val: 0 });
+                watch(form, () => updateChart(), { deep: true });
+                onMounted(() => updateChart());
+
+                return { activeTab, selMonth, selYear, form, livingCost, addExpense, saveData };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
